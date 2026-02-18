@@ -1109,6 +1109,38 @@ func TestMetricFamilyToMetricDescriptor(t *testing.T) {
 	}
 }
 
+func TestMetricFamilyToMetricDescriptor_Filtering(t *testing.T) {
+	cfg := &config.CommonConfig{
+		SourceConfig: &config.SourceConfig{
+			MetricsPrefix: "test_entity",
+			Component:     "test_component",
+			PodConfig:     config.NewPodConfig("pod", "ns", "container", "", "", "", "entity_type_label", "entity_name_label"),
+		},
+	}
+
+	familyName := "test_family"
+	mType := dto.MetricType_COUNTER
+	family := &dto.MetricFamily{
+		Name: &familyName,
+		Type: &mType,
+		Metric: []*dto.Metric{
+			{
+				Label: []*dto.LabelPair{
+					{Name: stringPtr("test_label"), Value: stringPtr("value")},
+					{Name: stringPtr("entity_name_label"), Value: stringPtr("my-node")},
+					{Name: stringPtr("entity_type_label"), Value: stringPtr("Node")},
+				},
+				Counter: &dto.Counter{Value: floatPtr(1.0)},
+			},
+		},
+	}
+
+	descriptor := MetricFamilyToMetricDescriptor(cfg, family, nil)
+
+	assert.Equal(t, 1, len(descriptor.Labels))
+	assert.Equal(t, "test_label", descriptor.Labels[0].Key)
+}
+
 func TestOmitComponentName(t *testing.T) {
 	var normalMetric1 = "metric1"
 	var metricWithSomePrefix = "some_prefix_metric2"
